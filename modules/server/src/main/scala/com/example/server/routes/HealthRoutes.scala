@@ -2,12 +2,16 @@ package com.example.server.routes
 
 import cats.effect.Sync
 import cats.syntax.all.*
-import io.circe.generic.auto.*
+import com.example.server.json.JsoniterEntityCodec.given
+import com.github.plokhotnyuk.jsoniter_scala.core.JsonValueCodec
+import com.github.plokhotnyuk.jsoniter_scala.macros.JsonCodecMaker
 import org.http4s.HttpRoutes
-import org.http4s.circe.CirceEntityCodec.*
 import org.http4s.dsl.Http4sDsl
 
 final case class HealthResponse(status: String)
+
+object HealthResponse:
+  given JsonValueCodec[HealthResponse] = JsonCodecMaker.make
 
 final class HealthRoutes[F[_]: Sync] extends Http4sDsl[F]:
 

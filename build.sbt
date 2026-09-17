@@ -13,8 +13,8 @@ ThisBuild / scalacOptions ++= Seq(
 // ---- Versions -------------------------------------------------------------
 val CatsEffectV = "3.5.7"
 val Fs2V        = "3.11.0"
-val CirceV      = "0.14.10"
 val Http4sV     = "0.23.30"
+val JsoniterV   = "2.27.6" // pinned to match the version smithy4s-json pulls in transitively
 val NatchezV      = "0.3.7"
 val NatchezHttp4sV = "0.6.1" // natchez-http4s is released on its own version line; 0.6.1 pairs with natchez-core 0.3.7 and http4s 0.23.30
 val CirisV      = "3.7.0"
@@ -51,13 +51,11 @@ lazy val domain = (project in file("modules/domain"))
   .settings(
     name := "domain",
     libraryDependencies ++= Seq(
-      "io.scalaland" %% "chimney" % ChimneyV,
-      "io.circe"     %% "circe-core"    % CirceV,
-      "io.circe"     %% "circe-generic" % CirceV
+      "io.scalaland" %% "chimney" % ChimneyV
     )
   )
 
-// ---- api: Smithy model + generated circe/http4s bindings ------------------
+// ---- api: Smithy model + generated jsoniter/http4s bindings ---------------
 lazy val api = (project in file("modules/api"))
   .enablePlugins(Smithy4sCodegenPlugin)
   .settings(commonSettings)
@@ -82,9 +80,9 @@ lazy val server = (project in file("modules/server"))
       "co.fs2"          %% "fs2-io"               % Fs2V,
       "org.http4s"      %% "http4s-ember-server"  % Http4sV,
       "org.http4s"      %% "http4s-ember-client"  % Http4sV,
-      "org.http4s"      %% "http4s-circe"         % Http4sV,
       "org.http4s"      %% "http4s-dsl"           % Http4sV,
-      "io.circe"        %% "circe-generic"        % CirceV,
+      "com.github.plokhotnyuk.jsoniter-scala" %% "jsoniter-scala-core"   % JsoniterV,
+      "com.github.plokhotnyuk.jsoniter-scala" %% "jsoniter-scala-macros" % JsoniterV % Provided,
       "is.cir"          %% "ciris"                % CirisV,
       "org.tpolecat"    %% "natchez-core"         % NatchezV,
       "org.tpolecat"    %% "natchez-http4s"        % NatchezHttp4sV,
