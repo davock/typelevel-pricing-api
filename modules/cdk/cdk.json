@@ -1,0 +1,10 @@
+{
+  "app": "sbt -error 'cdk/runMain com.example.cdk.CdkApp'",
+  "watch": {
+    "include": ["src/**"],
+    "exclude": ["cdk.out/**"]
+  },
+  "context": {
+    "@aws-cdk/core:newStyleStackSynthesis": true
+  }
+}
