@@ -1,6 +1,6 @@
 import com.typesafe.sbt.packager.docker.DockerChmodType
 
-ThisBuild / scalaVersion := "3.3.4"
+ThisBuild / scalaVersion := "3.8.4"
 ThisBuild / organization := "com.example"
 ThisBuild / version      := "0.1.0-SNAPSHOT"
 ThisBuild / scalacOptions ++= Seq(
@@ -24,14 +24,25 @@ val MunitV      = "1.0.3"
 val MunitCEV    = "2.0.0"
 val LogbackV    = "1.5.12"
 val Log4CatsV   = "2.7.0"
+val WeaverV     = "0.8.4"
 
 // ---- Common settings --------------------------------------------------
 lazy val commonSettings = Seq(
   libraryDependencies ++= Seq(
-    "org.scalameta" %% "munit"               % MunitV     % Test,
-    "org.typelevel" %% "munit-cats-effect"    % MunitCEV   % Test
+    "org.scalameta"      %% "munit"            % MunitV     % Test,
+    "org.typelevel"       %% "munit-cats-effect" % MunitCEV   % Test,
+    // weaver-core pulls in a hardcoded org.scala-lang:scala-reflect:2.13.x dependency
+    // (a leftover from its cross-platform macro support) that sbt's default Scala-version
+    // override then tries to force to this build's scalaVersion — which fails to resolve
+    // since scala-reflect was never published for Scala 3. It isn't used on the JVM 3 path,
+    // so it's safe to exclude.
+    ("com.disneystreaming" %% "weaver-cats"      % WeaverV    % Test)
+      .exclude("org.scala-lang", "scala-reflect")
   ),
-  testFrameworks += new TestFramework("munit.Framework")
+  testFrameworks ++= Seq(
+    new TestFramework("munit.Framework"),
+    new TestFramework("weaver.framework.CatsEffect")
+  )
 )
 
 // ---- domain: pure models + chimney DTO transforms ------------------------
