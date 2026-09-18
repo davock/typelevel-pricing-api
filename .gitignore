@@ -9,3 +9,4 @@ target/
 cdk.out/
 node_modules/
 .DS_Store
+.localstack
