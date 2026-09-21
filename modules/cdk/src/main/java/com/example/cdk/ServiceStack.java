@@ -10,6 +10,14 @@ import software.amazon.awscdk.services.dynamodb.*;
 import software.amazon.awscdk.services.ec2.Vpc;
 import software.amazon.awscdk.services.elasticloadbalancingv2.*;
 import software.amazon.awscdk.services.elasticloadbalancingv2.HealthCheck;
+import software.amazon.awscdk.services.iam.PolicyStatement;
+import software.amazon.awscdk.services.kinesis.Stream;
+import software.amazon.awscdk.services.lambda.Code;
+import software.amazon.awscdk.services.lambda.Function;
+import software.amazon.awscdk.services.lambda.Runtime;
+import software.amazon.awscdk.services.lambda.StartingPosition;
+import software.amazon.awscdk.services.lambda.eventsources.DynamoEventSource;
+import software.amazon.awscdk.services.lambda.eventsources.DynamoEventSourceProps;
 import software.constructs.Construct;
 
 import java.util.List;
@@ -24,7 +32,7 @@ public class ServiceStack extends Stack {
 
         Vpc vpc = Vpc.Builder.create(this, "ServiceVpc")
                 .maxAzs(2)
-                .natGateways(1)
+                .natGateways(0)
                 .build();
 
 
@@ -39,11 +47,41 @@ public class ServiceStack extends Stack {
                 .billingMode(BillingMode.PAY_PER_REQUEST)
                 .build();
 
-        DockerImageAsset image = DockerImageAsset.Builder.create(this, "ServerImage")
-                // Points at the Dockerfile sbt-native-packager generates under
-                // modules/server/target/docker/stage after `sbt server/Docker/stage`.
-                .directory("modules/server/target/docker/stage")
+        Table ordersTable = Table.Builder.create(this, "OrdersTable")
+                .tableName("orders")
+                .partitionKey(Attribute.builder().name("pk").type(AttributeType.STRING).build())
+                .sortKey(Attribute.builder().name("pk").type(AttributeType.STRING).build())
+                .billingMode(BillingMode.PAY_PER_REQUEST)
+                .stream(StreamViewType.NEW_IMAGE)
                 .build();
+
+
+        Stream orderPricedStream = Stream.Builder.create(this, "OrderPricedEvents")
+                .streamName("order-priced-events")
+                .shardCount(1)
+                .build();
+
+        Function outboxDispatcher = Function.Builder.create(this, "OutboxDispatcherFn")
+                .runtime(Runtime.JAVA_21)
+                .handler("com.example.streamprocessor.Handler")
+                .code(Code.fromAsset("modules/stream-processor/target/scala-3.3.4/stream-processor.jar"))
+                .memorySize(512)
+                .environment(Map.of(
+                        "KINESIS_STREAM_NAME", orderPricedStream.getStreamName(),
+                        "AWS_REGION", this.getRegion()
+                ))
+                .build();
+        
+        
+        outboxDispatcher.addEventSource(new DynamoEventSource(ordersTable, DynamoEventSourceProps.builder()
+                .startingPosition(StartingPosition.LATEST)
+                .batchSize(10)
+                .build()
+        ));
+        
+        orderPricedStream.grantReadWrite(outboxDispatcher);
+        
+        
 
         FargateTaskDefinition taskDef = FargateTaskDefinition.Builder.create(this, "PricingTaskDef")
                 .cpu(256)
@@ -51,7 +89,7 @@ public class ServiceStack extends Stack {
                 .build();
 
         taskDef.addContainer("ServerContainer", ContainerDefinitionOptions.builder()
-                .image(ContainerImage.fromDockerImageAsset(image))
+                .image(ContainerImage.fromRegistry("example-server:0.1.0-SNAPSHOT"))
                 .portMappings(List.of(PortMapping.builder().containerPort(8080).build()))
                 .environment(Map.of(
                         "PRICING_TABLE_NAME", pricingTable.getTableName(),
@@ -59,6 +97,15 @@ public class ServiceStack extends Stack {
                 ))
                 .logging(LogDrivers.awsLogs(AwsLogDriverProps.builder().streamPrefix("pricing-server").build()))
                 .build()
+        );
+
+        ordersTable.grantReadData(taskDef.getTaskRole());
+        
+        outboxDispatcher.getRole().addToPrincipalPolicy(
+                PolicyStatement.Builder.create()
+                        .actions(List.of("dynamodb.DeleteItem"))
+                        .resources(List.of(ordersTable.getTableArn()))
+                        .build()
         );
 
         FargateService service = FargateService.Builder.create(this, "PricingFargateService")
@@ -93,6 +140,6 @@ public class ServiceStack extends Stack {
         );
 
         service.getConnections().allowFrom(alb, Port.tcp(8080));
-        
+
     }
 }
