@@ -8,7 +8,6 @@ services:
       - "4566:4566"   # edge port — all emulated AWS services
       - "4510-4559:4510-4559"
     environment:
-      - SERVICES=ecs,ecr,ec2,elasticloadbalancing,dynamodb,sqs,s3,logs,iam,sts,cloudformation,lambda
       - DEBUG=0
       - DOCKER_HOST=unix:///var/run/docker.sock
       - PERSISTENCE=1

@@ -1,4 +1,4 @@
-package com.example.domain
+package com.example.server.domain
 
 import io.scalaland.chimney.dsl.*
 import java.time.Instant

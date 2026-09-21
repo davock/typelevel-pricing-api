@@ -1,4 +1,4 @@
-package com.example.domain
+package com.example.server.domain
 
 import java.time.Instant
 import java.util.UUID

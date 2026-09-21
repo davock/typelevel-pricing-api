@@ -47,16 +47,6 @@ lazy val commonSettings = Seq(
   )
 )
 
-// ---- domain: pure models + chimney DTO transforms ------------------------
-lazy val domain = (project in file("modules/domain"))
-  .settings(commonSettings)
-  .settings(
-    name := "domain",
-    libraryDependencies ++= Seq(
-      "io.scalaland" %% "chimney" % ChimneyV
-    )
-  )
-
 // ---- api: Smithy model + generated jsoniter/http4s bindings ---------------
 lazy val api = (project in file("modules/api"))
   .enablePlugins(Smithy4sCodegenPlugin)
@@ -72,7 +62,7 @@ lazy val api = (project in file("modules/api"))
 // ---- server: cats-effect / fs2 / http4s runtime, ciris config, natchez ----
 lazy val server = (project in file("modules/server"))
   .enablePlugins(JavaAppPackaging, DockerPlugin)
-  .dependsOn(domain, api)
+  .dependsOn(api)
   .settings(commonSettings)
   .settings(
     name := "server",
@@ -84,7 +74,8 @@ lazy val server = (project in file("modules/server"))
       "org.http4s" %% "http4s-ember-client" % Http4sV,
       "org.http4s" %% "http4s-dsl" % Http4sV,
       "com.github.plokhotnyuk.jsoniter-scala" %% "jsoniter-scala-core" % JsoniterV,
-      "com.github.plokhotnyuk.jsoniter-scala" %% "jsoniter-scala-macros" % JsoniterV % Provided,
+      "com.github.plokhotnyuk.jsoniter-scala" %% "jsoniter-scala-macros" % JsoniterV,
+      "io.scalaland" %% "chimney" % ChimneyV,
       "is.cir" %% "ciris" % CirisV,
       "software.amazon.awssdk" % "dynamodb" % DynamoDBV,
       "org.tpolecat" %% "natchez-core" % NatchezV,
@@ -114,7 +105,7 @@ lazy val cdk = (project in file("modules/cdk"))
   )
 
 lazy val root = (project in file("."))
-  .aggregate(domain, api, server, cdk)
+  .aggregate(api, server, cdk)
   .settings(
     name := "scala-typelevel-cdk-skeleton",
     publish / skip := true
